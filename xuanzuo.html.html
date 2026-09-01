@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>高中班级在线选座系统</title>
+    <style>
+        /* ===== 全局重置 & 基础 ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(145deg, #e9edf2 0%, #d5dce6 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* ===== 主容器 ===== */
+        .app-container {
+            background-color: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), 0 8px 20px rgba(0, 0, 0, 0.06);
+            padding: 30px 35px 40px;
+            max-width: 1080px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        /* ===== 顶部标题 & 统计 ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a2634;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1 small {
+            font-size: 16px;
+            font-weight: 400;
+            color: #6b7a8d;
+            margin-left: 6px;
+        }
+
+        .stats {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: #f0f3f8;
+            padding: 8px 22px 8px 24px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1f2a3a;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .stats span {
+            color: #2c3e50;
+        }
+
+        .stats .num {
+            font-weight: 700;
+            font-size: 18px;
+            color: #0b1a2a;
+        }
+
+        .stats .num.used {
+            color: #c0392b;
+        }
+
+        .stats .num.total {
+            color: #2c6b9e;
+        }
+
+        .stats .divider {
+            color: #bcc9d6;
+            font-weight: 300;
+        }
+
+        /* ===== 图例 ===== */
+        .legend {
+            display: flex;
+            gap: 28px;
+            justify-content: center;
+            margin-bottom: 18px;
+            font-size: 14px;
+            color: #2c3e50;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 28px;
+            height: 18px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
+        }
+
+        .legend-color.available {
+            background: #4a90d9;
+        }
+        .legend-color.occupied {
+            background: #e74c3c;
+        }
+
+        /* ================================================================
+              教室布局：黑板(顶) | 左窗 + 中间座位 + 右门(前门上后门下)
+              ================================================================ */
+        .classroom {
+            background: #f7f9fc;
+            border-radius: 20px;
+            padding: 18px 16px 16px;
+            border: 2px solid #dce3ec;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ----- 黑板 (顶部) ----- */
+        .blackboard {
+            background: #1e2b39;
+            background: linear-gradient(145deg, #1a2634, #2d3e4f);
+            color: #f0f4fa;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 12px;
+            padding: 12px 0 10px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            border: 1px solid #3d4f62;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .blackboard::after {
+            content: "✏️";
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            letter-spacing: 0;
+            opacity: 0.5;
+        }
+
+        /* ----- 主体区域 (窗 + 座位 + 门) ----- */
+        .main-area {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+            min-height: 380px;
+        }
+
+        /* ---- 左侧窗 ---- */
+        .window-side {
+            writing-mode: vertical-lr;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #cfe2f2;
+            background: linear-gradient(180deg, #d4e6f7, #b8cee4);
+            border-radius: 12px;
+            padding: 12px 6px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1f4a6e;
+            letter-spacing: 6px;
+            width: 44px;
+            flex-shrink: 0;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), inset 0 2px 6px rgba(0, 0, 0, 0.04);
+            border: 1px solid #a5bed6;
+            user-select: none;
+        }
+
+        .window-side span {
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .window-side span::before {
+            content: "🪟";
+            font-size: 18px;
+            opacity: 0.7;
+            writing-mode: horizontal-tb;
+            display: inline-block;
+        }
+
+        /* ---- 座位网格 (中间) ---- */
+        .seat-grid-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: stretch;
+            min-width: 0;
+        }
+
+        .seat-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            width: 100%;
+            align-content: center;
+        }
+
+        /* ---- 右侧门区域 (前门上，后门下) ---- */
+        .door-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 80px;
+            flex-shrink: 0;
+            justify-content: stretch;
+        }
+
+        .door {
+            flex: 1;
+            background: #8b7a6b;
+            background: linear-gradient(145deg, #9e8d7e, #7a6a5c);
+            color: #f2ede8;
+            font-weight: 700;
+            font-size: 16px;
+            border-radius: 10px 10px 6px 6px;
+            box-shadow: 0 4px 0 #5c4e42, 0 6px 12px rgba(0, 0, 0, 0.12);
+            border: 1px solid #b09b8a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 2px;
+            gap: 2px;
+            min-height: 60px;
+            transition: transform 0.15s ease;
+            position: relative;
+        }
+
+        .door::before {
+            font-size: 22px;
+            display: block;
+        }
+
+        .door.front-door::before {
+            content: "🚪";
+        }
+        .door.back-door::before {
+            content: "🚪";
+        }
+
+        .door .door-label {
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .door .door-sub {
+            font-size: 10px;
+            opacity: 0.7;
+            letter-spacing: 1px;
+            font-weight: 400;
+        }
+
+        .door:hover {
+            transform: scale(1.02);
+        }
+
+        /* ===== 单个座位 ===== */
+        .seat {
+            aspect-ratio: 1.1 / 1;
+            background: #4a90d9;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 15px;
+            color: #000000;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(74, 144, 217, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            transition: all 0.15s ease;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            user-select: none;
+            position: relative;
+            padding: 2px;
+            line-height: 1.2;
+        }
+
+        .seat .col-row {
+            font-size: 15px;
+            font-weight: 700;
+            color: #000000;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.1);
+            letter-spacing: 0.3px;
+        }
+
+        .seat .sub-label {
+            font-size: 10px;
+            font-weight: 400;
+            color: #000000;
+            opacity: 0.55;
+            margin-top: 1px;
+        }
+
+        /* 空置座位（蓝色） */
+        .seat.available {
+            background: #4a90d9;
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .seat.available:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 20px rgba(74, 144, 217, 0.40), 0 2px 8px rgba(74, 144, 217, 0.20);
+            border-color: rgba(255, 255, 255, 0.35);
+            background: #569be6;
+        }
+
+        .seat.available:active {
+            transform: translateY(0px) scale(0.97);
+        }
+
+        /* 已选座位（红色） */
+        .seat.occupied {
+            background: #e74c3c;
+            border-color: rgba(255, 255, 255, 0.10);
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            cursor: pointer;
+        }
+
+        .seat.occupied:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 20px rgba(231, 76, 60, 0.35), 0 2px 8px rgba(231, 76, 60, 0.15);
+            border-color: rgba(255, 255, 255, 0.30);
+            background: #f05a4a;
+        }
+
+        .seat.occupied:active {
+            transform: translateY(0px) scale(0.97);
+        }
+
+        .seat.occupied .lock-icon {
+            position: absolute;
+            top: 3px;
+            right: 5px;
+            font-size: 11px;
+            opacity: 0.45;
+            color: #000;
+        }
+
+        /* ===== 弹窗（模态框） ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.94);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-box {
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 32px 38px 34px;
+            max-width: 460px;
+            width: 92%;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.30);
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .modal-box .close-btn {
+            position: absolute;
+            top: 14px;
+            right: 18px;
+            font-size: 26px;
+            cursor: pointer;
+            color: #9aaec2;
+            background: none;
+            border: none;
+            line-height: 1;
+            transition: color 0.15s;
+        }
+
+        .modal-box .close-btn:hover {
+            color: #2c3e50;
+        }
+
+        .modal-box .modal-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a2634;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .modal-box .modal-title .seat-pos {
+            background: #eef2f7;
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f3a5f;
+        }
+
+        .modal-box .modal-sub {
+            font-size: 15px;
+            color: #5a6f84;
+            margin-bottom: 22px;
+            border-bottom: 1px solid #eef3f8;
+            padding-bottom: 16px;
+        }
+
+        .modal-box .info-occupied {
+            background: #fef6f5;
+            border-left: 4px solid #e74c3c;
+            padding: 16px 18px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+
+        .modal-box .info-occupied .label {
+            font-weight: 600;
+            color: #1a2634;
+        }
+
+        .modal-box .info-occupied .value {
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .modal-box .info-occupied .student-name {
+            font-size: 18px;
+            color: #c0392b;
+            font-weight: 700;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            color: #1f2a3a;
+            margin-bottom: 5px;
+        }
+
+        .form-group label .required {
+            color: #e74c3c;
+            margin-left: 2px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #dce3ec;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border 0.2s, box-shadow 0.2s;
+            background: #fafcfe;
+            color: #1a2634;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: #4a90d9;
+            box-shadow: 0 0 0 4px rgba(74, 144, 217, 0.12);
+            background: #ffffff;
+        }
+
+        .form-group input::placeholder {
+            color: #b0c4d6;
+            font-weight: 300;
+        }
+
+        .form-group .hint {
+            font-size: 13px;
+            color: #7a8fa3;
+            margin-top: 4px;
+            padding-left: 4px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .form-actions button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            min-width: 100px;
+        }
+
+        .btn-submit {
+            background: #4a90d9;
+            color: white;
+            box-shadow: 0 4px 12px rgba(74, 144, 217, 0.30);
+        }
+
+        .btn-submit:hover {
+            background: #3a7bc4;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(74, 144, 217, 0.35);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0px);
+        }
+
+        .btn-cancel {
+            background: #ecf0f3;
+            color: #3d5166;
+        }
+
+        .btn-cancel:hover {
+            background: #dfe5ec;
+        }
+
+        .btn-close-modal {
+            background: #eef2f7;
+            color: #2c3e50;
+            flex: 1;
+        }
+
+        .btn-close-modal:hover {
+            background: #dfe5ec;
+        }
+
+        /* ===== 底部按钮区域（左右布局） ===== */
+        .footer-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .footer-left {
+            display: flex;
+            gap: 12px;
+        }
+
+        .footer-right {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-reset {
+            background: none;
+            border: 2px solid #d5dee8;
+            color: #6b7f94;
+            padding: 8px 22px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-reset:hover {
+            border-color: #c0392b;
+            color: #c0392b;
+            background: #fef6f5;
+        }
+
+        .btn-reset:active {
+            transform: scale(0.96);
+        }
+
+        .btn-download {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.30);
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-download:hover {
+            background: #2ecc71;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(39, 174, 96, 0.35);
+        }
+
+        .btn-download:active {
+            transform: translateY(0px);
+        }
+
+        /* ===== Toast 提示 ===== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1f2a3a;
+            color: #fff;
+            padding: 14px 28px;
+            border-radius: 16px;
+            font-weight: 500;
+            font-size: 15px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+            opacity: 0;
+            transition: all 0.35s ease;
+            z-index: 1000;
+            pointer-events: none;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0px);
+        }
+
+        .toast.error {
+            background: #c0392b;
+        }
+        .toast.success {
+            background: #27ae60;
+        }
+
+        /* ================================================================
+              响应式
+              ================================================================ */
+        @media (max-width: 860px) {
+            .app-container {
+                padding: 20px 18px 28px;
+            }
+            .header h1 {
+                font-size: 22px;
+            }
+            .header h1 small {
+                font-size: 14px;
+            }
+            .stats {
+                font-size: 13px;
+                padding: 6px 16px 6px 18px;
+                gap: 12px;
+            }
+            .stats .num {
+                font-size: 16px;
+            }
+
+            .window-side {
+                width: 34px;
+                font-size: 13px;
+                letter-spacing: 4px;
+                padding: 8px 4px;
+            }
+            .window-side span::before {
+                font-size: 14px;
+            }
+
+            .door-area {
+                width: 64px;
+                gap: 8px;
+            }
+            .door {
+                font-size: 13px;
+                border-radius: 8px 8px 4px 4px;
+                min-height: 48px;
+            }
+            .door::before {
+                font-size: 18px;
+            }
+            .door .door-label {
+                font-size: 12px;
+            }
+            .door .door-sub {
+                font-size: 9px;
+            }
+
+            .seat {
+                font-size: 13px;
+                border-radius: 8px;
+            }
+            .seat .col-row {
+                font-size: 13px;
+            }
+            .seat .sub-label {
+                font-size: 9px;
+            }
+            .seat-grid {
+                gap: 5px;
+            }
+            .blackboard {
+                font-size: 18px;
+                letter-spacing: 8px;
+                padding: 10px 0;
+            }
+            .modal-box {
+                padding: 24px 22px 28px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .app-container {
+                padding: 14px 10px 20px;
+                border-radius: 20px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            .header h1 {
+                font-size: 20px;
+                justify-content: center;
+            }
+            .stats {
+                justify-content: center;
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+
+            .main-area {
+                gap: 6px;
+                min-height: 280px;
+                flex-wrap: nowrap;
+            }
+
+            .window-side {
+                width: 28px;
+                font-size: 10px;
+                letter-spacing: 2px;
+                padding: 4px 3px;
+                border-radius: 8px;
+            }
+            .window-side span::before {
+                font-size: 12px;
+            }
+
+            .door-area {
+                width: 50px;
+                gap: 6px;
+            }
+            .door {
+                font-size: 10px;
+                border-radius: 6px 6px 3px 3px;
+                min-height: 36px;
+                box-shadow: 0 2px 0 #5c4e42, 0 4px 8px rgba(0, 0, 0, 0.10);
+            }
+            .door::before {
+                font-size: 14px;
+            }
+            .door .door-label {
+                font-size: 10px;
+                letter-spacing: 1px;
+            }
+            .door .door-sub {
+                display: none;
+            }
+
+            .seat-grid {
+                gap: 4px;
+            }
+            .seat {
+                border-radius: 6px;
+                font-size: 10px;
+                min-height: 32px;
+            }
+            .seat .col-row {
+                font-size: 10px;
+            }
+            .seat .sub-label {
+                font-size: 7px;
+            }
+            .blackboard {
+                font-size: 15px;
+                letter-spacing: 4px;
+                padding: 8px 0;
+                border-radius: 8px;
+                margin-bottom: 10px;
+            }
+            .blackboard::after {
+                font-size: 14px;
+                right: 12px;
+            }
+            .modal-box {
+                padding: 20px 16px 24px;
+                border-radius: 20px;
+            }
+            .modal-box .modal-title {
+                font-size: 18px;
+            }
+            .modal-box .modal-title .seat-pos {
+                font-size: 15px;
+                padding: 2px 12px;
+            }
+            .form-group input {
+                padding: 10px 14px;
+                font-size: 15px;
+            }
+            .form-actions button {
+                font-size: 14px;
+                padding: 10px 14px;
+                min-width: 70px;
+            }
+            .legend {
+                font-size: 12px;
+                gap: 14px;
+            }
+            .legend-color {
+                width: 20px;
+                height: 14px;
+            }
+            .footer-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .footer-left,
+            .footer-right {
+                justify-content: center;
+            }
+            .btn-download {
+                padding: 8px 20px;
+                font-size: 13px;
+            }
+            .btn-reset {
+                padding: 8px 20px;
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 430px) {
+            .main-area {
+                gap: 4px;
+                min-height: 220px;
+            }
+            .window-side {
+                width: 22px;
+                font-size: 8px;
+                letter-spacing: 1px;
+                padding: 2px 2px;
+            }
+            .window-side span::before {
+                font-size: 10px;
+            }
+            .door-area {
+                width: 38px;
+                gap: 4px;
+            }
+            .door {
+                font-size: 8px;
+                border-radius: 4px 4px 2px 2px;
+                min-height: 28px;
+                box-shadow: 0 1px 0 #5c4e42, 0 2px 6px rgba(0, 0, 0, 0.08);
+            }
+            .door::before {
+                font-size: 12px;
+            }
+            .door .door-label {
+                font-size: 8px;
+                letter-spacing: 0.5px;
+            }
+            .door .door-sub {
+                display: none;
+            }
+            .seat-grid {
+                gap: 3px;
+            }
+            .seat {
+                font-size: 8px;
+                min-height: 24px;
+                border-radius: 4px;
+            }
+            .seat .col-row {
+                font-size: 8px;
+            }
+            .seat .sub-label {
+                font-size: 6px;
+            }
+            .blackboard {
+                font-size: 12px;
+                letter-spacing: 2px;
+                padding: 6px 0;
+            }
+            .btn-download {
+                padding: 6px 16px;
+                font-size: 12px;
+            }
+            .btn-reset {
+                padding: 6px 16px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== 主容器 ===== -->
+    <div class="app-container">
+
+        <!-- 顶部 -->
+        <div class="header">
+            <h1>
+                🏫 选座系统
+                <small>高中班级</small>
+            </h1>
+            <div class="stats">
+                <span>已选 <span class="num used" id="usedCount">0</span></span>
+                <span class="divider">/</span>
+                <span>总计 <span class="num total" id="totalCount">35</span></span>
+            </div>
+        </div>
+
+        <!-- 图例 -->
+        <div class="legend">
+            <span class="legend-item">
+                <span class="legend-color available"></span> 可选
+            </span>
+            <span class="legend-item">
+                <span class="legend-color occupied"></span> 已选
+            </span>
+        </div>
+
+        <!-- ===== 教室 ===== -->
+        <div class="classroom">
+
+            <!-- 黑板 (顶部) -->
+            <div class="blackboard">黑 板</div>
+
+            <!-- 主体：窗 + 座位 + 门 -->
+            <div class="main-area">
+
+                <!-- 左窗 -->
+                <div class="window-side"><span>窗</span></div>
+
+                <!-- 座位网格 (中间) -->
+                <div class="seat-grid-wrapper">
+                    <div class="seat-grid" id="seatGrid"></div>
+                </div>
+
+                <!-- 右门区域：前门(上) + 后门(下) -->
+                <div class="door-area">
+                    <div class="door front-door">
+                        <span class="door-label">前门</span>
+                        <span class="door-sub">FRONT</span>
+                    </div>
+                    <div class="door back-door">
+                        <span class="door-label">后门</span>
+                        <span class="door-sub">BACK</span>
+                    </div>
+                </div>
+
+            </div>
+            <!-- /main-area -->
+
+        </div>
+        <!-- /classroom -->
+
+        <!-- 底部：左（重置） 右（下载） -->
+        <div class="footer-actions">
+            <div class="footer-left">
+                <button class="btn-reset" id="resetBtn">🗑 重置所有座位</button>
+            </div>
+            <div class="footer-right">
+                <button class="btn-download" id="downloadBtn">📥 下载表格</button>
+            </div>
+        </div>
+    </div>
+    <!-- /app-container -->
+
+    <!-- ===== 弹窗 ===== -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <button class="close-btn" id="modalCloseBtn">&times;</button>
+            <div id="modalContent">
+                <!-- 由 JS 动态填充 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Toast ===== -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ================================================================
+        //  配置
+        // ================================================================
+        const COLS = 7;
+        const ROWS = 5;
+        const TOTAL_SEATS = COLS * ROWS;
+        const STUDENT_ID_MIN = 200;
+        const STUDENT_ID_MAX = 241;
+        const STORAGE_KEY = 'classroom_seats_data';
+
+        // ================================================================
+        //  状态
+        // ================================================================
+        let seatData = {};
+
+        // ================================================================
+        //  DOM 引用
+        // ================================================================
+        const gridEl = document.getElementById('seatGrid');
+        const usedCountEl = document.getElementById('usedCount');
+        const totalCountEl = document.getElementById('totalCount');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalContent = document.getElementById('modalContent');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+        const toastEl = document.getElementById('toast');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // ================================================================
+        //  工具函数
+        // ================================================================
+        function seatKey(col, row) {
+            return `${col}-${row}`;
+        }
+
+        function parseSeatKey(key) {
+            const parts = key.split('-');
+            return { col: parseInt(parts[0], 10), row: parseInt(parts[1], 10) };
+        }
+
+        function isSeatOccupied(col, row) {
+            return !!seatData[seatKey(col, row)];
+        }
+
+        function getSeatInfo(col, row) {
+            return seatData[seatKey(col, row)] || null;
+        }
+
+        // ================================================================
+        //  数据持久化
+        // ================================================================
+        function loadData() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    seatData = JSON.parse(stored);
+                    if (typeof seatData !== 'object' || Array.isArray(seatData)) seatData = {};
+                } catch (_) {
+                    seatData = {};
+                }
+            } else {
+                seatData = {};
+            }
+            // 清理无效键
+            const validKeys = [];
+            for (const key of Object.keys(seatData)) {
+                const parts = key.split('-');
+                if (parts.length === 2) {
+                    const c = parseInt(parts[0], 10);
+                    const r = parseInt(parts[1], 10);
+                    if (c >= 1 && c <= COLS && r >= 1 && r <= ROWS) {
+                        const info = seatData[key];
+                        if (info && typeof info.name === 'string' && typeof info.studentId === 'string') {
+                            validKeys.push(key);
+                            continue;
+                        }
+                    }
+                }
+                delete seatData[key];
+            }
+            if (validKeys.length !== Object.keys(seatData).length) {
+                const newData = {};
+                for (const key of validKeys) newData[key] = seatData[key];
+                seatData = newData;
+                saveData();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(seatData));
+        }
+
+        function clearAllData() {
+            seatData = {};
+            saveData();
+        }
+
+        // ================================================================
+        //  渲染座位
+        // ================================================================
+        function renderSeats() {
+            gridEl.innerHTML = '';
+            let usedCount = 0;
+
+            for (let row = 1; row <= ROWS; row++) {
+                for (let col = 1; col <= COLS; col++) {
+                    const key = seatKey(col, row);
+                    const occupied = !!seatData[key];
+                    if (occupied) usedCount++;
+
+                    const seatDiv = document.createElement('div');
+                    seatDiv.className = `seat ${occupied ? 'occupied' : 'available'}`;
+                    seatDiv.dataset.col = col;
+                    seatDiv.dataset.row = row;
+                    seatDiv.dataset.key = key;
+
+                    const labelSpan = document.createElement('span');
+                    labelSpan.className = 'col-row';
+                    labelSpan.textContent = `${col}-${row}`;
+                    seatDiv.appendChild(labelSpan);
+
+                    const subSpan = document.createElement('span');
+                    subSpan.className = 'sub-label';
+                    subSpan.textContent = `第${row}排`;
+                    seatDiv.appendChild(subSpan);
+
+                    if (occupied) {
+                        const lock = document.createElement('span');
+                        lock.className = 'lock-icon';
+                        lock.textContent = '🔒';
+                        seatDiv.appendChild(lock);
+                    }
+
+                    seatDiv.addEventListener('click', () => handleSeatClick(col, row));
+                    gridEl.appendChild(seatDiv);
+                }
+            }
+
+            usedCountEl.textContent = usedCount;
+            totalCountEl.textContent = TOTAL_SEATS;
+        }
+
+        // ================================================================
+        //  处理座位点击
+        // ================================================================
+        function handleSeatClick(col, row) {
+            const key = seatKey(col, row);
+            const info = seatData[key];
+
+            if (info) {
+                showOccupiedModal(col, row, info);
+            } else {
+                showBookingModal(col, row);
+            }
+        }
+
+        // ================================================================
+        //  弹窗：已选座位查看
+        // ================================================================
+        function showOccupiedModal(col, row, info) {
+            modalContent.innerHTML = `
+                <div class="modal-title">
+                    📌 座位 <span class="seat-pos">${col}列 ${row}排</span>
+                </div>
+                <div class="modal-sub">该座位已被选择</div>
+                <div class="info-occupied">
+                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                        <span><span class="label">👤 姓名：</span><span class="value student-name">${escapeHtml(info.name)}</span></span>
+                        <span><span class="label">🎓 学号：</span><span class="value">${escapeHtml(info.studentId)}</span></span>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-close-modal" id="modalCloseBtnInner">关 闭</button>
+                </div>
+            `;
+            const closeInner = document.getElementById('modalCloseBtnInner');
+            if (closeInner) closeInner.addEventListener('click', closeModal);
+            modalOverlay.classList.add('active');
+        }
+
+        // ================================================================
+        //  弹窗：选座填写
+        // ================================================================
+        function showBookingModal(col, row) {
+            modalContent.innerHTML = `
+                <div class="modal-title">
+                    ✏️ 选座 <span class="seat-pos">${col}列 ${row}排</span>
+                </div>
+                <div class="modal-sub">请填写你的信息，提交后锁定座位</div>
+
+                <div class="form-group">
+                    <label>1. 姓名 <span class="required">*</span></label>
+                    <input type="text" id="inputName" placeholder="请输入姓名" maxlength="20" autocomplete="off" />
+                </div>
+
+                <div class="form-group">
+                    <label>2. 学号 <span class="required">*</span></label>
+                    <input type="number" id="inputStudentId" placeholder="200 ~ 241" min="200" max="241" autocomplete="off" />
+                    <div class="hint">仅支持 200-241 之间的数字</div>
+                </div>
+
+                <div class="form-actions">
+                    <button class="btn-submit" id="submitBtn">✅ 提交锁定</button>
+                    <button class="btn-cancel" id="cancelBtn">取消</button>
+                </div>
+            `;
+
+            const submitBtn = document.getElementById('submitBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const inputName = document.getElementById('inputName');
+            const inputStudentId = document.getElementById('inputStudentId');
+
+            if (submitBtn) {
+                submitBtn.addEventListener('click', () => {
+                    handleSubmit(col, row, inputName.value.trim(), inputStudentId.value.trim());
+                });
+            }
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', closeModal);
+            }
+
+            [inputName, inputStudentId].forEach(inp => {
+                if (inp) {
+                    inp.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (submitBtn) submitBtn.click();
+                        }
+                    });
+                }
+            });
+
+            if (inputName) setTimeout(() => inputName.focus(), 80);
+            modalOverlay.classList.add('active');
+        }
+
+        // ================================================================
+        //  提交选座
+        // ================================================================
+        function handleSubmit(col, row, name, studentId) {
+            if (!name) {
+                showToast('请输入姓名', 'error');
+                document.getElementById('inputName')?.focus();
+                return;
+            }
+
+            const idNum = parseInt(studentId, 10);
+            if (isNaN(idNum) || !Number.isInteger(idNum) || idNum < STUDENT_ID_MIN || idNum > STUDENT_ID_MAX) {
+                showToast(`学号必须是 ${STUDENT_ID_MIN} ~ ${STUDENT_ID_MAX} 之间的整数`, 'error');
+                document.getElementById('inputStudentId')?.focus();
+                return;
+            }
+
+            const key = seatKey(col, row);
+            if (seatData[key]) {
+                showToast('该座位已被他人选择，请刷新页面', 'error');
+                closeModal();
+                renderSeats();
+                return;
+            }
+
+            for (const [k, v] of Object.entries(seatData)) {
+                if (v.studentId === String(idNum)) {
+                    const { col: c, row: r } = parseSeatKey(k);
+                    showToast(`学号 ${idNum} 已选择了 ${c}列 ${r}排，不能重复选座`, 'error');
+                    return;
+                }
+            }
+
+            seatData[key] = { name: name, studentId: String(idNum) };
+            saveData();
+            closeModal();
+            renderSeats();
+            showToast(`🎉 ${name} 同学，选座成功！座位 ${col}列 ${row}排 已锁定`, 'success');
+        }
+
+        // ================================================================
+        //  弹窗控制
+        // ================================================================
+        function closeModal() {
+            modalOverlay.classList.remove('active');
+        }
+
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+        modalCloseBtn.addEventListener('click', closeModal);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // ================================================================
+        //  Toast
+        // ================================================================
+        let toastTimer = null;
+
+        function showToast(message, type = 'info') {
+            toastEl.textContent = message;
+            toastEl.className = 'toast';
+            if (type === 'error') toastEl.classList.add('error');
+            else if (type === 'success') toastEl.classList.add('success');
+            void toastEl.offsetWidth;
+            toastEl.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toastEl.classList.remove('show');
+            }, 3000);
+        }
+
+        // ================================================================
+        //  HTML 转义
+        // ================================================================
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ================================================================
+        //  下载表格功能（支持自定义保存位置）
+        // ================================================================
+        async function downloadSeatTable() {
+            const entries = Object.keys(seatData);
+            if (entries.length === 0) {
+                showToast('暂无已选座位，无需下载', 'info');
+                return;
+            }
+
+            // 构建 HTML 内容（与之前相同）
+            let html = `<!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+            <meta charset="UTF-8">
+            <title>班级座位表</title>
+            <style>
+                body { font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif; padding: 30px; background: #f5f7fa; }
+                .container { max-width: 900px; margin: 0 auto; background: white; padding: 25px 30px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+                h1 { text-align: center; font-size: 26px; color: #1a2634; margin-bottom: 6px; }
+                .sub { text-align: center; color: #6b7a8d; font-size: 14px; margin-bottom: 20px; }
+                table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                th { background: #eef2f7; font-weight: 600; color: #1f2a3a; padding: 10px 4px; border: 1px solid #d0d7e0; text-align: center; font-size: 14px; }
+                td { border: 1px solid #d0d7e0; text-align: center; vertical-align: middle; height: 70px; padding: 4px; font-size: 13px; background: #fafcfe; }
+                .seat-cell { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
+                .student-id { font-weight: 700; color: #1a2634; font-size: 14px; }
+                .student-name { font-weight: 500; color: #2c3e50; font-size: 13px; margin-top: 2px; }
+                .empty { color: #b0c4d6; font-size: 12px; }
+                .legend { display: flex; justify-content: center; gap: 24px; margin: 16px 0 12px; font-size: 13px; }
+                .legend-item { display: flex; align-items: center; gap: 6px; }
+                .legend-color { width: 20px; height: 14px; border-radius: 4px; }
+                .legend-color.occupied { background: #e74c3c; }
+                .legend-color.empty { background: #4a90d9; }
+                .footer { text-align: right; font-size: 12px; color: #9aaec2; margin-top: 16px; border-top: 1px solid #eef3f8; padding-top: 12px; }
+                @media print { .no-print { display: none; } }
+                .header-note { text-align: center; font-size: 14px; color: #1a2634; margin-bottom: 10px; font-weight: 500; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>📚 班级座位表</h1>
+                <div class="sub">教室座位布局（7列 × 5排）</div>
+                <div class="legend">
+                    <span class="legend-item"><span class="legend-color occupied"></span> 已选</span>
+                    <span class="legend-item"><span class="legend-color empty"></span> 空位</span>
+                </div>
+                <div class="header-note">⬆️ 黑板</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>第1列</th><th>第2列</th><th>第3列</th><th>第4列</th><th>第5列</th><th>第6列</th><th>第7列</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            for (let row = 1; row <= ROWS; row++) {
+                html += `<tr>`;
+                for (let col = 1; col <= COLS; col++) {
+                    const key = seatKey(col, row);
+                    const info = seatData[key];
+                    const hasData = !!info;
+                    html += `<td>`;
+                    if (hasData) {
+                        html += `<div class="seat-cell">
+                                    <div class="student-id">${escapeHtml(info.studentId)}</div>
+                                    <div class="student-name">${escapeHtml(info.name)}</div>
+                                </div>`;
+                    } else {
+                        html += `<div class="seat-cell"><span class="empty">—</span></div>`;
+                    }
+                    html += `</td>`;
+                }
+                html += `</tr>`;
+            }
+
+            html += `</tbody></table>
+                <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:13px; color:#5a6f84;">
+                    <span>🚪 前门（右侧上方）</span>
+                    <span>🚪 后门（右侧下方）</span>
+                </div>
+                <div class="footer">生成时间：${new Date().toLocaleString()}</div>
+            </div>
+        </body>
+        </html>`;
+
+            // 核心：使用 File System Access API 让用户选择保存位置
+            try {
+                // 检查浏览器是否支持 showSaveFilePicker
+                if (window.showSaveFilePicker) {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: `座位表_${new Date().toLocaleDateString().replace(/\//g, '-')}.html`,
+                        types: [{
+                            description: 'HTML 文件',
+                            accept: { 'text/html': ['.html', '.htm'] }
+                        }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(html);
+                    await writable.close();
+                    showToast('✅ 座位表已保存到您选择的位置', 'success');
+                } else {
+                    // 降级：直接下载到默认下载文件夹
+                    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.href = url;
+                    link.download = `座位表_${new Date().toLocaleDateString().replace(/\//g, '-')}.html`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    showToast('📥 文件已下载到默认下载文件夹（当前浏览器不支持自定义路径）', 'info');
+                }
+            } catch (error) {
+                // 用户取消或保存失败
+                if (error.name !== 'AbortError' && error.name !== 'UserAbortError') {
+                    console.error('保存失败:', error);
+                    showToast('❌ 保存失败，请重试或检查权限', 'error');
+                } else {
+                    // 用户主动取消
+                    showToast('已取消保存', 'info');
+                }
+            }
+        }
+
+        // ================================================================
+        //  重置功能
+        // ================================================================
+        resetBtn.addEventListener('click', () => {
+            const used = Object.keys(seatData).length;
+            if (used === 0) {
+                showToast('当前没有已选座位，无需重置', 'info');
+                return;
+            }
+            if (confirm(`⚠️ 确定要重置所有座位吗？\n当前已有 ${used} 个座位被选，重置后将全部清空。`)) {
+                clearAllData();
+                renderSeats();
+                showToast('已重置所有座位', 'success');
+            }
+        });
+
+        // ================================================================
+        //  绑定下载按钮事件
+        // ================================================================
+        downloadBtn.addEventListener('click', downloadSeatTable);
+
+        // ================================================================
+        //  初始化
+        // ================================================================
+        function init() {
+            loadData();
+            renderSeats();
+            const used = Object.keys(seatData).length;
+            setTimeout(() => {
+                showToast(used === 0 ? '👋 点击蓝色座位即可选座' : `📊 当前已有 ${used} 个座位被选`, 'info');
+            }, 400);
+        }
+
+        init();
+
+        // 暴露调试（可选）
+        window.__seatSystem = { seatData, renderSeats, loadData, saveData, clearAllData, downloadSeatTable };
+    </script>
+</body>
+</html>
